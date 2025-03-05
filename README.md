@@ -69,3 +69,6 @@ Training parameters:
 - Final Accuracy: 80%
 - Training Time: Approximately 15-20 minutes (depends on hardware)
 - Validation Accuracy: 78-82%
+   
+ <img src="./figure.png" alt="Drawing"/>
+ <img src="./test_accuracy.png" alt="Drawing"/> 
