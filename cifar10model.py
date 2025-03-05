@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers, models, optimizers
+from tensorflow.python.keras import layers, models, optimizers
 import matplotlib.pyplot as plt
 
 
@@ -161,4 +161,5 @@ def main():
     print("\nVisualizing Predictions:")
     vis_predict(model, x_test, y_test)
 
-main()
+if __name__ == '__main__':
+    main()
