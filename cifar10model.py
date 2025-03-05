@@ -72,23 +72,24 @@ class CIFAR10Model(nn.Module):
         return x
 
 def prepare_data():
-
-    transform_train, transform_test=get_transforms()
-
-    #Training Dataset
+    #Prepare CIFAR-10 training and testing datasets and dataloaders.
+    transform_train, transform_test=get_transforms()        #Get transformations   
+    #Create training dataset
     trainset=torchvision.datasets.CIFAR10(
-        root='./data', train=True,                         # Storage directory,Training data
+        root='./data', train=True,                         #Storage directory,Training data
         download=True, transform=transform_train           #Auto-download,Data preprocessing 
     )
+    #Create testing dataset
     testset=torchvision.datasets.CIFAR10(
         root='./data', train=False, 
         download=True, transform=transform_test
     )
-    
+    #Create DataLoader for training data
     trainloader=torch.utils.data.DataLoader(
         trainset, batch_size=64, 
         shuffle=True, num_workers=2
     )
+    #Create DataLoader for testing data
     testloader=torch.utils.data.DataLoader(
         testset, batch_size=64, 
         shuffle=False, num_workers=2
@@ -97,37 +98,37 @@ def prepare_data():
     return trainloader, testloader
 
 def train_model(model, trainloader, testloader, criterion, optimizer, scheduler):
-
-    train_losses=[]
+    
+    train_losses=[]                                        #initialization
     
     model.train()
-    
+    #Training loop: iterate through 20 epochs
     for epoch in range(20):
-        running_loss=0.0
-        correct=0
-        total=0
+        running_loss=0.0                                    #loss for this epoch
+        correct=0                                           #correct predictions
+        total=0                                             #total sample
         
         for inputs, labels in trainloader:
             inputs, labels=inputs.to(device), labels.to(device)
             
-            optimizer.zero_grad()
+            optimizer.zero_grad()                           #Zero the parameter gradients
+                                                            #Prevents gradients from accumulating across batches    
+            outputs=model(inputs)                           #Forward pass: compute model predictions
+            loss=criterion(outputs, labels)                 #Compute the loss between predictions and true labels
             
-            outputs=model(inputs)
-            loss=criterion(outputs, labels)
-            
-            loss.backward()
+            loss.backward()                                 #Backward pass: compute gradients
             optimizer.step()
             
-            running_loss += loss.item()
+            running_loss += loss.item()                     #update running loss
             
             _, predicted=torch.max(outputs.data, 1)
-            total += labels.size(0)
+            total += labels.size(0)                         #updating total samples and corect predictions
             correct += (predicted == labels).sum().item()
         
-        scheduler.step()
-        
-        epoch_loss=running_loss/len(trainloader)
-        accuracy=100 * correct / total
+        scheduler.step()                                    #Step the learning rate scheduler
+                                                            #Adjusts learning rate based on the defined schedule
+        epoch_loss=running_loss/len(trainloader)            #avg loss for entire epoch
+        accuracy=100 * correct / total                      #calculate training accuracy
         train_losses.append(epoch_loss)
         
         print(f'Epoch [{epoch+1}/{20}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%')
@@ -136,23 +137,29 @@ def train_model(model, trainloader, testloader, criterion, optimizer, scheduler)
 
 
 def evaluate(model, testloader):
-    model.eval()
+  
+    model.eval()                                           #Set the model to evaluation mode
+                                                           #This disables layers like dropout and batch normalization 
+    #initializing variables again                          #to behave consistently during inference
     correct=0
     total=0
-    class_correct=list(0. for _ in range(10))
+    class_correct=list(0. for _ in range(10))              #Initialized with 10 zeros (one for each CIFAR-10 class)
     class_total=list(0. for _ in range(10))
     
     with torch.no_grad():
+        #Iterate through test data batches
         for inputs, labels in testloader:
             inputs, labels=inputs.to(device), labels.to(device)
             
-            outputs=model(inputs)
-            _, predicted=torch.max(outputs.data, 1)
+            outputs=model(inputs)                         #Forward pass: get model predictions
+            _, predicted=torch.max(outputs.data, 1)       #Get the predicted class (highest probability)
             
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
             
-            c = (predicted == labels).squeeze()
+            c = (predicted == labels).squeeze() #Compute per-class correctness
+            
+            #Update per-class correct predictions and total samples
             for i in range(len(labels)):
                 label=labels[i]
                 class_correct[label] += c[i].item()
@@ -169,18 +176,20 @@ def vis_predict(model, testloader):
     
     model.eval()
     
-    dataiter=iter(testloader)
+    dataiter=iter(testloader)                                  #iterator created for testholder
     images,labels=next(dataiter)
-    images,labels=images.to(device),labels.to(device)
+    images,labels=images.to(device),labels.to(device)          #first batch of images and labels
     
-    outputs=model(images)
+    outputs=model(images)                                      #get model predictions
     _, predicted=torch.max(outputs, 1)
     
-    plt.figure(figsize=(15, 3))
+    plt.figure(figsize=(15, 3))  #Create a figure to display images
+    #visualizing first 5 images
     for i in range(5):
         plt.subplot(1, 5, i+1)
-
-        img=images[i].cpu().numpy().transpose((1, 2, 0))
+        # Prepare image for display
+        img=images[i].cpu().numpy().transpose((1, 2, 0))        #Move image back to CPU and convert to numpy
+                                                                #Reverse the normalization applied during data preprocessing
         img=img * np.array([0.2023, 0.1994, 0.2010]) + np.array([0.4914, 0.4822, 0.4465])
         plt.imshow(np.clip(img, 0, 1))
         plt.title(f'Pred: {CLASSES[predicted[i]]}\nTrue: {CLASSES[labels[i]]}')
@@ -189,19 +198,31 @@ def vis_predict(model, testloader):
     plt.show()
 
 def main():
-    trainloader, testloader = prepare_data()
-    model=CIFAR10Model(10).to(device)
+    trainloader, testloader = prepare_data()                    #data prep
+    model=CIFAR10Model(10).to(device)                           #Create CIFAR-10 model with 10 output classes
+                                                                #Move model to the specified device 
     
-    criterion=nn.CrossEntropyLoss()
-    optimizer=optim.Adam(model.parameters(), lr=0.001)
-    scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    criterion=nn.CrossEntropyLoss()                            #Loss Function,CrossEntropyLoss is standard for multi-class classification
+    optimizer=optim.Adam(model.parameters(), lr=0.001)         #Optimizer;Adam: Adaptive learning rate optimization algorithm
+
+    scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)      #learning rate scheduler
     
-    print("Starting Training:")
+    print("Starting Training:")                                #training process
     train_losses = train_model(model, trainloader, testloader, criterion, optimizer, scheduler)
     print("\nEvaluating Model:")
-    evaluate(model, testloader)
+    evaluate(model, testloader)                                 #model evaluation
     print("\nVisualizing Predictions:")
-    vis_predict(model, testloader)
+    vis_predict(model, testloader)                              #prediction visualization
 
-if __name__ == '__main__':
+if __name__ == '__main__':                                      #Ensure the main function runs only when the script is executed directly
     main()
+
+
+
+#resources used: 
+#https://cs231n.github.io/convolutional-networks/
+#https://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html
+#https://www.geeksforgeeks.org/convolutional-neural-network-cnn-in-machine-learning/
+#https://stackoverflow.com/questions/72262608/steps-for-machine-learning-in-pytorch
+
+    
