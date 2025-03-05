@@ -34,3 +34,38 @@ The CNN model consists of:
 - Fully connected layers for classification
 - ReLU activation functions
 - Batch normalization for improved training stability
+
+
+## Requirements
+
+- Python 3.8+
+- PyTorch 1.10+
+- torchvision
+- matplotlib
+- numpy
+
+## Installation
+
+To run this project, you need to install the following packages:
+
+```python
+pip install numpy
+pip install pandas
+pip install matplotlib
+pip install torch torchvision torchaudio
+```
+
+## Training
+Training parameters:
+
+- Epochs: 20
+- Batch Size: 64
+- Learning Rate: 0.001
+- Optimizer: Adam
+- Loss Function: Cross-Entropy Loss
+
+# #Results
+
+- Final Accuracy: 80%
+- Training Time: Approximately 15-20 minutes (depends on hardware)
+- Validation Accuracy: 78-82%
