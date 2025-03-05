@@ -17,8 +17,8 @@ def get_transforms():
     transform_train=transforms.Compose([        #data augmentation
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))    #data normalization
+        transforms.ToTensor(),                                                       ##data normalization
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))     #Scales pixel values from [0, 255] to [0, 1]
     ])
     
     transform_test=transforms.Compose([
@@ -35,17 +35,17 @@ class CIFAR10Model(nn.Module):
         super(CIFAR10Model, self).__init__()
         
         self.features=nn.Sequential(
-            #conv1
+            # First conv layer: 3 input channels (RGB), 32 output channels/filters(convolutions) created, kernel sixe 3, padding of 1 pixel 
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(32),                             #normalizes output
+            nn.ReLU(inplace=True),                          #ReLu action
             nn.Conv2d(32, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Dropout(0.2),
+            nn.MaxPool2d(kernel_size=2, stride=2),          #extracts max value in each window
+            nn.Dropout(0.2),                                #dropuout for regularization
             
-            #conv2
+            # Second conv layer: 32 input channel (matches the output of the first block), 64 output channels to learn more complex features
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
@@ -56,28 +56,29 @@ class CIFAR10Model(nn.Module):
             nn.Dropout(0.2)
         )
         
-        #fc
+        # Fully Connected Layer
         self.classifier=nn.Sequential(
-            nn.Linear(64 * 8 * 8, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
+            nn.Linear(64 * 8 * 8, 512),                      #dimension size: 64 channels from prev block, 8*8 spacial dimensions after
+            nn.BatchNorm1d(512),                             #multiple pooling layers, flattened input=4096 neurons, outpit size=512
+            nn.ReLU(inplace=True),                           #Transformation was: conv layer(4096 dimensions)->fc layer->Compressed ver(512 dimensions)
             nn.Dropout(0.5),
             nn.Linear(512, num_classes)
         )
     
     def forward(self, x):
         x=self.features(x)
-        x=x.view(x.size(0), -1)
+        x=x.view(x.size(0), -1)                            #flattening to 1D vector
         x=self.classifier(x)
         return x
 
 def prepare_data():
 
     transform_train, transform_test=get_transforms()
-    
+
+    #Training Dataset
     trainset=torchvision.datasets.CIFAR10(
-        root='./data', train=True, 
-        download=True, transform=transform_train
+        root='./data', train=True,                         # Storage directory,Training data
+        download=True, transform=transform_train           #Auto-download,Data preprocessing 
     )
     testset=torchvision.datasets.CIFAR10(
         root='./data', train=False, 
