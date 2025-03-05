@@ -1,165 +1,206 @@
-import tensorflow as tf
-from tensorflow.python.keras import layers, models, optimizers
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import numpy as np
 
+#classes of the dataset CIFAR-10
+CLASSES=['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
 
-CLASSES = ['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
+#configuration of device
+device=torch.device('cpu')
+print(f"Using device: {device}")
 
-def create_dataset():
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    
-    x_train = x_train.astype('float32') / 255.0
-    x_test = x_test.astype('float32') / 255.0
-    
-    y_train = tf.keras.utils.to_categorical(y_train, 10)
-    y_test = tf.keras.utils.to_categorical(y_test, 10)
-    
-    return x_train, y_train, x_test, y_test
-
-def data_aug():
-    return tf.keras.Sequential([
-        layers.RandomFlip("horizontal"),
-        layers.RandomRotation(0.1),
-        layers.RandomZoom(0.1),
-    ])
-
-def cnn(input_shape=(32, 32, 3), num_classes=10):
-    model = models.Sequential([
-        data_aug(),
-        
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape),
-        layers.BatchNormalization(),
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        
-        layers.Flatten(),
-        layers.Dense(512, activation='relu'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.5),
-        layers.Dense(num_classes, activation='softmax')
+def get_transforms():
+    transform_train=transforms.Compose([        #data augmentation
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))    #data normalization
     ])
     
-    return model
+    transform_test=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ])
+    
+    return transform_train, transform_test
 
-def train_model(model, x_train, y_train, x_test, y_test):
-    lr_schedule = optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.001,
-        decay_steps=10000,
-        decay_rate=0.9
-    )
-    
-    model.compile(
-        optimizer=optimizers.Adam(learning_rate=lr_schedule),
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
-    )
-    
-    callbacks = [
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss', 
-            factor=0.5, 
-            patience=3, 
-            min_lr=1e-5
-        ),
-        tf.keras.callbacks.EarlyStopping(
-            monitor='val_accuracy', 
-            patience=5, 
-            restore_best_weights=True
+
+#CNN Model
+class CIFAR10Model(nn.Module):
+    def __init__(self, num_classes=10):
+        super(CIFAR10Model, self).__init__()
+        
+        self.features=nn.Sequential(
+            #conv1
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout(0.2),
+            
+            #conv2
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout(0.2)
         )
-    ]
+        
+        #fc
+        self.classifier=nn.Sequential(
+            nn.Linear(64 * 8 * 8, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(512, num_classes)
+        )
     
-    stats = model.fit(
-        x_train, y_train,
-        validation_data=(x_test, y_test),
-        batch_size=64,
-        epochs=20,
-        callbacks=callbacks
+    def forward(self, x):
+        x=self.features(x)
+        x=x.view(x.size(0), -1)
+        x=self.classifier(x)
+        return x
+
+def prepare_data():
+
+    transform_train, transform_test=get_transforms()
+    
+    trainset=torchvision.datasets.CIFAR10(
+        root='./data', train=True, 
+        download=True, transform=transform_train
+    )
+    testset=torchvision.datasets.CIFAR10(
+        root='./data', train=False, 
+        download=True, transform=transform_test
     )
     
-    return stats
+    trainloader=torch.utils.data.DataLoader(
+        trainset, batch_size=64, 
+        shuffle=True, num_workers=2
+    )
+    testloader=torch.utils.data.DataLoader(
+        testset, batch_size=64, 
+        shuffle=False, num_workers=2
+    )
+    
+    return trainloader, testloader
 
-def eval(model, x_test, y_test):
-    test_loss, test_accuracy = model.evaluate(x_test, y_test, verbose=0)
-    print(f"\nTest Accuracy: {test_accuracy * 100:.2f}%")
+def train_model(model, trainloader, testloader, criterion, optimizer, scheduler):
+
+    train_losses=[]
     
-    predictions = model.predict(x_test)
-    predicted_classes = tf.argmax(predictions, axis=1)
-    true_classes = tf.argmax(y_test, axis=1)
+    model.train()
     
-    print("\nPer-class Accuracy:")
+    for epoch in range(20):
+        running_loss=0.0
+        correct=0
+        total=0
+        
+        for inputs, labels in trainloader:
+            inputs, labels=inputs.to(device), labels.to(device)
+            
+            optimizer.zero_grad()
+            
+            outputs=model(inputs)
+            loss=criterion(outputs, labels)
+            
+            loss.backward()
+            optimizer.step()
+            
+            running_loss += loss.item()
+            
+            _, predicted=torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+        
+        scheduler.step()
+        
+        epoch_loss=running_loss/len(trainloader)
+        accuracy=100 * correct / total
+        train_losses.append(epoch_loss)
+        
+        print(f'Epoch [{epoch+1}/{20}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%')
+    
+    return train_losses
+
+
+def evaluate(model, testloader):
+    model.eval()
+    correct=0
+    total=0
+    class_correct=list(0. for _ in range(10))
+    class_total=list(0. for _ in range(10))
+    
+    with torch.no_grad():
+        for inputs, labels in testloader:
+            inputs, labels=inputs.to(device), labels.to(device)
+            
+            outputs=model(inputs)
+            _, predicted=torch.max(outputs.data, 1)
+            
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+            
+            c = (predicted == labels).squeeze()
+            for i in range(len(labels)):
+                label=labels[i]
+                class_correct[label] += c[i].item()
+                class_total[label] += 1
+    
+    print(f'\nTest Accuracy: {100 * correct / total:.2f}%')
+    
+    print('\nPer-class Accuracy:')
     for i in range(10):
-        class_mask = true_classes == i
-        class_accuracy = tf.reduce_mean(
-            tf.cast(predicted_classes[class_mask] == true_classes[class_mask], tf.float32)
-        )
-        print(f"{CLASSES[i]}: {class_accuracy.numpy() * 100:.2f}%")
+        if class_total[i]>0:
+            print(f'{CLASSES[i]}: {100 * class_correct[i] / class_total[i]:.2f}%')
 
-def vis_predict(model, x_test, y_test, num_images=5):
-    predictions = model.predict(x_test)
-    predicted_classes = tf.argmax(predictions, axis=1)
-    true_classes = tf.argmax(y_test, axis=1)
+def vis_predict(model, testloader):
+    
+    model.eval()
+    
+    dataiter=iter(testloader)
+    images,labels=next(dataiter)
+    images,labels=images.to(device),labels.to(device)
+    
+    outputs=model(images)
+    _, predicted=torch.max(outputs, 1)
     
     plt.figure(figsize=(15, 3))
-    for i in range(num_images):
-        plt.subplot(1, num_images, i+1)
-        plt.imshow(x_test[i])
-        plt.title(f'Pred: {CLASSES[predicted_classes[i]]}\nTrue: {CLASSES[true_classes[i]]}')
+    for i in range(5):
+        plt.subplot(1, 5, i+1)
+
+        img=images[i].cpu().numpy().transpose((1, 2, 0))
+        img=img * np.array([0.2023, 0.1994, 0.2010]) + np.array([0.4914, 0.4822, 0.4465])
+        plt.imshow(np.clip(img, 0, 1))
+        plt.title(f'Pred: {CLASSES[predicted[i]]}\nTrue: {CLASSES[labels[i]]}')
         plt.axis('off')
     plt.tight_layout()
     plt.show()
 
-def plot_history(stats):
-    plt.figure(figsize=(12, 4))
-    plt.subplot(1, 2, 1)
-    plt.plot(stats.history['accuracy'])
-    plt.plot(stats.history['val_accuracy'])
-    plt.title('Model Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Validation'], loc='upper left')
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(stats.history['loss'])
-    plt.plot(stats.history['val_loss'])
-    plt.title('Model Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Validation'], loc='upper left')
-    plt.tight_layout()
-    plt.show()
-
 def main():
-    x_train, y_train, x_test, y_test = create_dataset()
-    model = cnn()
+    trainloader, testloader = prepare_data()
+    model=CIFAR10Model(10).to(device)
     
-    model.summary()
+    criterion=nn.CrossEntropyLoss()
+    optimizer=optim.Adam(model.parameters(), lr=0.001)
+    scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
     
-    print("\nStarting Training:")
-    stats = train_model(model, x_train, y_train, x_test, y_test)
-    
-    print("\nModel Evaluation:")
-    eval(model, x_test, y_test)
-    
-    plot_history(stats)
-    
+    print("Starting Training:")
+    train_losses = train_model(model, trainloader, testloader, criterion, optimizer, scheduler)
+    print("\nEvaluating Model:")
+    evaluate(model, testloader)
     print("\nVisualizing Predictions:")
-    vis_predict(model, x_test, y_test)
+    vis_predict(model, testloader)
 
 if __name__ == '__main__':
     main()
