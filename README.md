@@ -11,6 +11,9 @@ This project implements an image classification model using Convolutional Neural
 - Results
 
 ## Dataset
+
+<img src="./cifar10.png" alt="cifar10"/>
+
 The CIFAR-10 dataset consists of 60,000 32x32 color images in 10 different classes:
 
 - Airplane
@@ -44,6 +47,7 @@ The CNN model consists of:
 - matplotlib
 - numpy
 - seaborn
+  
 ## Installation
 
 To run this project, you need to install the following packages:
@@ -66,11 +70,18 @@ Training parameters:
 - Optimizer: Adam
 - Loss Function: Cross-Entropy Loss
 
+## Per Class Metrics
+
+<img src="./metrics.png" alt="metrics"/>
+
 ## Results
 
-- Final Accuracy: 80%
+<img src="./cm.png" alt="cm"/>
+
+- Final Accuracy: 82%
 - Training Time: Approximately 15-20 minutes (depends on hardware)
 - Validation Accuracy: 78-82%
-   
- <img src="./figure.png" alt="Drawing"/>
- <img src="./test_accuracy.png" alt="Drawing"/> 
+
+<img src="./figure.png" alt="Drawing"/>
+
+<img src="./train_and_val.png" alt="Drawing"/>
