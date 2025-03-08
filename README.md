@@ -43,7 +43,7 @@ The CNN model consists of:
 - torchvision
 - matplotlib
 - numpy
-
+- seaborn
 ## Installation
 
 To run this project, you need to install the following packages:
@@ -53,6 +53,8 @@ pip install numpy
 pip install pandas
 pip install matplotlib
 pip install torch torchvision torchaudio
+pip install seaborn
+pip install scikit-learn==3.5.0
 ```
 
 ## Training
