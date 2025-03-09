@@ -280,7 +280,7 @@ def evaluate(model, testloader):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
             
-            c = (predicted == labels).squeeze() #Compute per-class correctness
+            c = (predicted == labels).squeeze()           #Compute per-class correctness
             
             #Update per-class correct predictions and total samples
             for i in range(len(labels)):
@@ -309,7 +309,7 @@ def vis_predict(model, testloader):
     outputs=model(images)                                      #get model predictions
     _, predicted=torch.max(outputs, 1)
     
-    plt.figure(figsize=(15, 3))  #Create a figure to display images
+    plt.figure(figsize=(15, 3))                                #Create a figure to display images
     #visualizing first 5 images
     for i in range(5):
         plt.subplot(1, 5, i+1)
