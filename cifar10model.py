@@ -16,10 +16,10 @@ device=torch.device('cpu')
 print(f"Using device: {device}")
 
 def get_transforms():
-    transform_train=transforms.Compose([        #data augmentation
+    transform_train=transforms.Compose([                                             #data augmentation
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),                                                       ##data normalization
+        transforms.ToTensor(),                                                       #data normalization
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))     #Scales pixel values from [0, 255] to [0, 1]
     ])
     
@@ -354,7 +354,7 @@ if __name__ == '__main__':                                      #Ensure the main
 #resources used: 
 #https://cs231n.github.io/convolutional-networks/
 #https://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html
-https://pytorch.org/docs/stable/torch.html
+#https://pytorch.org/docs/stable/torch.html
 #https://www.geeksforgeeks.org/convolutional-neural-network-cnn-in-machine-learning/
 #https://stackoverflow.com/questions/72262608/steps-for-machine-learning-in-pytorch
 
